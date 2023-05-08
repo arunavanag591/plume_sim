@@ -5,15 +5,41 @@ import concurrent.futures
 from transformers import BertTokenizer, BertForMaskedLM
 import torch
 
+from transformers import DistilBertTokenizer, DistilBertForMaskedLM
+
+
+
+
+# Load the pre-trained DistilBERT model and tokenizer
+model_name = "distilbert-base-uncased"
+tokenizer = DistilBertTokenizer.from_pretrained(model_name)
+model = DistilBertForMaskedLM.from_pretrained(model_name)
+model.eval()
+
+
+
+
+# Different BERT model
+
+# model_name = 'bert-base-uncased'
+# tokenizer = BertTokenizer.from_pretrained(model_name)
+# model = BertForMaskedLM.from_pretrained(model_name)
+# model.eval()
+
+# Check if a GPU is available, and if so, move the model to the GPU
+if torch.cuda.is_available():
+    model = model.cuda()
+
+
 
 # Load and preprocess data
 dir = '~/DataAnalysis/data/Sprints/HighRes/'
 df = pd.read_hdf(dir+'Windy/WindyMASigned.h5')
-df1=df[0:150000]
+df1=df[0:50000]
 df1=df1.round(3)
 
 # Test Dataset
-test=df[15000:25000]
+test=df[15000:20000]
 test=test.round(3)
 
 
@@ -34,10 +60,7 @@ for chunk_index in range(num_chunks):
         text_data += f"Odor encounter: {row['odor']}, Location: ({row['xsrc']}, {row['ysrc']}), U velocity: {row['U']}, V velocity: {row['V']}.\n"
 
 
-model_name = 'bert-base-uncased'
-tokenizer = BertTokenizer.from_pretrained(model_name)
-model = BertForMaskedLM.from_pretrained(model_name)
-model.eval()
+
 
 
 def generate_odor_with_bert(input_row):
@@ -49,10 +72,15 @@ def generate_odor_with_bert(input_row):
     while not match:
         # Tokenize the input prompt
         input_ids = tokenizer.encode(prompt, return_tensors='pt',max_length=512, truncation=True)
+     
         mask_idx = len(input_ids[0]) - 1
 
         # Mask the last token (X)
         input_ids[0, mask_idx] = tokenizer.mask_token_id
+
+        # Move input tensor to GPU if available
+        if torch.cuda.is_available():
+            input_ids = input_ids.cuda()
 
         # Generate logits for masked token
         with torch.no_grad():
