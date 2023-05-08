@@ -1,9 +1,6 @@
-import openai
 import pandas as pd
 import numpy as np
 import re
-import openpyxl
-import matplotlib.pyplot as plt
 import concurrent.futures
 from transformers import BertTokenizer, BertForMaskedLM
 import torch
@@ -19,18 +16,6 @@ df1=df1.round(3)
 test=df[15000:25000]
 test=test.round(3)
 
-## Get Key
-def read_first_cell(file_path):
-    workbook = openpyxl.load_workbook(file_path)
-    sheet = workbook.active
-    first_cell = sheet.cell(row=1, column=1)
-    return first_cell.value
-
-file_path = '../openaikey.xlsx'  
-first_cell_value = read_first_cell(file_path)
-
-openai.api_key=first_cell_value
-API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 
 # Set the chunk size
 chunk_size = 60
@@ -54,41 +39,6 @@ tokenizer = BertTokenizer.from_pretrained(model_name)
 model = BertForMaskedLM.from_pretrained(model_name)
 model.eval()
 
-def generate_odor(input_row):
-    prompt = f"{text_data}\nGenerate a new odor encounter with the following location: ({input_row['xsrc']}, {input_row['ysrc']}) and U velocity: {input_row['U']}, V velocity: {input_row['V']}.Please use the format: Odor encounter: X, Location: (X, Y)"
-    pattern = r"Odor encounter: ([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?), Location: \(([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?), ([+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)\)"
-
-    # pattern = r"Odor encounter: (.*), Location: \((.*), (.*)\)"
-    match = None
-
-    while not match:
-        response = openai.Completion.create(
-            engine="text-davinci-002",
-            prompt=prompt,
-            temperature=0.7,
-            max_tokens=50,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-        )
-
-        generated_texts = response.choices[0].text.strip()
-        match = re.search(pattern, generated_texts)
-        if not match:
-            print("Failed to parse generated text")
-            print("Generated text:", generated_texts)
-
-    if match:
-        new_entry = {
-            "odor": float(match.group(1).strip()),
-            "xsrc": float(match.group(2).strip()),
-            "ysrc": float(match.group(3).strip()),
-        }
-        return new_entry
-    else:
-        print("Failed to parse generated text")
-        print("Generated text:", generated_texts)
-        return None
 
 def generate_odor_with_bert(input_row):
     prompt = f"{text_data}\nGenerate a new odor encounter with the following location: ({input_row['xsrc']}, {input_row['ysrc']}) and U velocity: {input_row['U']}, V velocity: {input_row['V']}.Please use the format: Odor encounter: X, Location: (X, Y)"
